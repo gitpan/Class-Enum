@@ -56,7 +56,7 @@
    "provides" : {
       "Class::Enum" : {
          "file" : "lib/Class/Enum.pm",
-         "version" : "0.01"
+         "version" : "0.02"
       }
    },
    "release_status" : "stable",
@@ -70,8 +70,8 @@
          "web" : "https://github.com/NetPenguin/p5-Class-Enum"
       }
    },
-   "version" : "0.01",
+   "version" : "0.02",
    "x_contributors" : [
-      "keita.iseki <keita.iseki@gmail.com>"
+      "NetPenguin <keita.iseki@gmail.com>"
    ]
 }

@@ -3,7 +3,7 @@ use 5.008005;
 use strict;
 use warnings;
 
-our $VERSION = "0.01";
+our $VERSION = "0.02";
 
 =encoding utf-8
 
@@ -25,6 +25,17 @@ and using.
 
     # using
     use Direction qw(Left Right);
+    
+    # default properties
+    print Left ->name; # 'Left'
+    print Right->name; # 'Right
+    print Left ->ordinal; # 0
+    print Right->ordinal; # 1
+    
+    print Left ->is_left;  # 1
+    print Left ->is_right; # ''
+    print Right->is_left;  # ''
+    print Right->is_right; # 1
     
     # compare by ordinal
     print Left() <=> Right; # -1
@@ -113,6 +124,7 @@ and using.
 Class::Enum provides behaviors of typed enum, such as a Typesafe enum in java.
 
 =cut
+use overload;
 use Carp qw(
     carp
     croak
@@ -162,13 +174,11 @@ sub __prepare {
     return $definition_of{$package} if exists $definition_of{$package};
 
     # install overload.
-    install_subroutine(
-        $package,
-        '((' => \&__nil,
-        '(<=>' => \&__ufo_operator,
-        '(cmp' => \&__cmp_operator,
-        '(""' => \&__string_conversion,
-        '(0+' => \&__numeric_conversion,
+    $package->overload::OVERLOAD(
+        '<=>' => \&__ufo_operator,
+        'cmp' => \&__cmp_operator,
+        '""' => \&__string_conversion,
+        '0+' => \&__numeric_conversion,
     );
 
     # install exporter.
@@ -202,7 +212,6 @@ sub __prepare {
 }
 
 # installed for overload method.
-sub __nil {}
 sub __ufo_operator {
     my ($lhs, $rhs) = @_;
     carp('Use of uninitialized value in overloaded numeric comparison '.
