@@ -3,13 +3,14 @@ abstract: 'typed enum'
 author:
   - 'keita.iseki <keita.iseki+cpan at gmail.com>'
 build_requires:
+  Exporter::Tiny: 0
   Test::More: 0.98
 configure_requires:
   CPAN::Meta: 0
   CPAN::Meta::Prereqs: 0
   Module::Build: 0.38
 dynamic_config: 0
-generated_by: 'Minilla/v0.5.3, CPAN::Meta::Converter version 2.120921'
+generated_by: 'Minilla/v0.6.5, CPAN::Meta::Converter version 2.120921'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -27,10 +28,11 @@ no_index:
 provides:
   Class::Enum:
     file: lib/Class/Enum.pm
-    version: 0.03
+    version: 0.04
 requires:
   Carp: 0
   Data::Util: 0
+  Data::Validator: 0
   Exporter: 0
   String::CamelCase: 0
   perl: 5.008005
@@ -38,7 +40,7 @@ resources:
   bugtracker: https://github.com/NetPenguin/p5-Class-Enum/issues
   homepage: https://github.com/NetPenguin/p5-Class-Enum
   repository: git://github.com/NetPenguin/p5-Class-Enum.git
-version: 0.03
+version: 0.04
 x_contributors:
   - 'Kulag <g.kulag@gmail.com>'
   - 'NetPenguin <keita.iseki@gmail.com>'

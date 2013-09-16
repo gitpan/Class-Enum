@@ -3,7 +3,7 @@ use 5.008005;
 use strict;
 use warnings;
 
-our $VERSION = "0.03";
+our $VERSION = "0.04";
 
 =encoding utf-8
 
@@ -122,6 +122,25 @@ and using.
     print 'Center is ' . Center; # 'Center is C'
     print 'Right is '  . Right;  # 'Right is R'
 
+=head2 Use alternate exporter.
+
+Define `Direction`,
+
+    # Direction.pm
+    package Direction;
+    use Class::Enum qw(Left Right), -install_exporter => 0; # No install 'Exporter'
+    use parent 'Exporter::Tiny';
+    our @EXPORT_OK = __PACKAGE__->names();
+
+and using.
+
+    # using
+    use Direction Left  => { -as => 'L' },
+                  Right => { -as => 'R' };
+
+    print L->name; # 'Left'
+    print R->name; # 'Right
+
 =head1 DESCRIPTION
 
 Class::Enum provides behaviors of typed enum, such as a Typesafe enum in java.
@@ -137,43 +156,58 @@ use Data::Util qw(
     is_hash_ref
     is_string
 );
+use Data::Validator;
 use Exporter qw();
 use String::CamelCase qw(
     decamelize
 );
 
+$Carp::Internal{ (__PACKAGE__) }++;
+
 sub import {
     my $class = shift;
     my ($package) = caller(0);
-    my @parameters = __read_import_parameters(@_);
-    my $definition = __prepare($package);
-    __define($package, $definition, $_) foreach @parameters;
+    my ($values, $options) = __read_import_parameters(@_);
+    my $definition = __prepare($package, $options);
+    __define($package, $definition, $_) foreach @$values;
 }
 
+my $options_rule = Data::Validator->new(
+    '-install_exporter' => { isa => 'Bool', default => 1 },
+)->with('Croak');
 sub __read_import_parameters {
-    my @parameters;
+    my @values;
+    my @options;
     for (my $i=0; $i<@_; $i++) {
-        my ($identifier, $properties) = @_[$i, $i+1];
+        my ($key, $value) = @_[$i, $i+1];
+        # option?
+        if ($key =~ m{\A-}xms) {
+            push @options, ($key, $value);
+            $i++;
+            next;
+        }
 
-        unless (is_string($identifier)) {
-            local $Carp::CarpLevel += 1;
+        # identifier and properties.
+        unless (is_string($key)) {
             croak('requires NAME* or (NAME => PROPERTIES)* parameters at \'use Class::Enum\', ' .
                   'NAME is string, PROPERTIES is hashref. ' .
                   '(e.g. \'use Class::Enum qw(Left Right)\' ' .
                   'or \'use Class::Enum Left => { delta => -1 }, Right => { delta => 1 }\')');
         }
 
-        push @parameters, {
-            identifier => $identifier,
-            properties => is_hash_ref($properties) ? do { $i++; $properties } : {},
+        push @values, {
+            identifier => $key,
+            properties => is_hash_ref($value) ? do { $i++; $value } : {},
         };
     }
-    return @parameters;
+
+    my $options = $options_rule->validate(@options);
+    return (\@values, $options);
 }
 
 my %definition_of;
 sub __prepare {
-    my ($package) = @_;
+    my ($package, $options) = @_;
     return $definition_of{$package} if exists $definition_of{$package};
 
     # install overload.
@@ -185,12 +219,12 @@ sub __prepare {
     );
 
     # install exporter.
-    install_subroutine(
-        $package,
-        import => \&Exporter::import,
-    );
     my $exportables = [];
-    {
+    if ($options->{'-install_exporter'}) {
+        install_subroutine(
+            $package,
+            import => \&Exporter::import,
+        );
         no strict 'refs';
         *{$package . '::EXPORT_OK'} = $exportables;
         *{$package . '::EXPORT_TAGS'} = {all => $exportables};
@@ -269,7 +303,6 @@ sub __from_ordinal {
 # define instance.
 sub __define {
     my ($package, $definition, $parameter) = @_;
-    local $Carp::CarpLevel += 1;
 
     # create instance.
     my $value = bless {
