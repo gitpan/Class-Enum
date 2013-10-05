@@ -3,7 +3,7 @@ use 5.008005;
 use strict;
 use warnings;
 
-our $VERSION = "0.04";
+our $VERSION = "0.05";
 
 =encoding utf-8
 
@@ -114,13 +114,28 @@ and using.
     use Direction qw(Left Center Right);
     
     my $pos = 5;
-    print $pos + int(Left);   # 4
-    print $pos + int(Center); # 5
-    print $pos + int(Right);  # 6
+    print $pos + Left;   # 4
+    print $pos + Center; # 5
+    print $pos + Right;  # 6
     
     print 'Left is '   . Left;   # 'Left is L'
     print 'Center is ' . Center; # 'Center is C'
     print 'Right is '  . Right;  # 'Right is R'
+
+=head2 Override overload
+
+Define `Direction`,
+
+    # Direction.pm
+    package Direction;
+    use Class::Enum qw(Left Right), -overload => { '""' => sub { $_[0]->ordinal } };
+
+and using.
+
+    # using
+    use Direction qw(Left Right);
+    print 'Left is '  . Left;  # 'Left is 0'
+    print 'Right is ' . Right; # 'Right is 1'
 
 =head2 Use alternate exporter.
 
@@ -173,7 +188,8 @@ sub import {
 }
 
 my $options_rule = Data::Validator->new(
-    '-install_exporter' => { isa => 'Bool', default => 1 },
+    '-install_exporter' => { isa => 'Bool'         , default => 1  },
+    '-overload'         => { isa => 'HashRef|Undef', default => {} },
 )->with('Croak');
 sub __read_import_parameters {
     my @values;
@@ -211,16 +227,26 @@ sub __prepare {
     return $definition_of{$package} if exists $definition_of{$package};
 
     # install overload.
-    $package->overload::OVERLOAD(
-        '<=>' => \&__ufo_operator,
-        'cmp' => \&__cmp_operator,
-        '""' => \&__string_conversion,
-        '0+' => \&__numeric_conversion,
-    );
+    if ($options->{-overload}) {
+        my %overload = (
+            '<=>' => \&__ufo_operator,
+            'cmp' => \&__cmp_operator,
+            '""' => \&__string_conversion,
+            '0+' => \&__numeric_conversion,
+            fallback => 1,
+            %{$options->{-overload}},
+        );
+
+        $package->overload::OVERLOAD(
+            map  { $_ => $overload{$_} }
+            grep { $_ eq 'fallback' || defined $overload{$_} }
+                 keys(%overload)
+        );
+    }
 
     # install exporter.
     my $exportables = [];
-    if ($options->{'-install_exporter'}) {
+    if ($options->{-install_exporter}) {
         install_subroutine(
             $package,
             import => \&Exporter::import,
